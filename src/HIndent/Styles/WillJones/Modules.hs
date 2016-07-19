@@ -3,6 +3,7 @@
 module HIndent.Styles.WillJones.Modules where
 
 import HIndent.Pretty
+import HIndent.Styles.WillJones.Operations
 import HIndent.Types
 
 import Control.Monad
@@ -15,9 +16,18 @@ prettyModule md =
   case md of
     Module l mmdHead pragmas@(_ : _) importDecls decls ->
       do prettyModulePragmas pragmas
-         pretty (Module l mmdHead [] importDecls decls)
+         whenJust prettyModuleHead mmdHead
+         pretty (Module l Nothing [] importDecls decls)
     _ ->
       prettyNoExt md
+
+-- | Pretty print a module head
+prettyModuleHead :: ModuleHead NodeInfo -> Printer s ()
+prettyModuleHead (ModuleHead _ name mwarning mexports) =
+  do write "module "
+     pretty name
+     whenJust pretty mwarning
+     whenJust (\exports -> newline >> prettyExportSpecList exports) mexports
 
 -- | Pretty print a list of module pragmas
 prettyModulePragmas :: [ModulePragma NodeInfo] -> Printer s ()
@@ -68,3 +78,28 @@ isLanguagePragma _ = False
 nameString :: Name NodeInfo -> String
 nameString (Ident _ name) = name
 nameString (Symbol _ name) = name
+
+-- | Pretty print an export list like
+--
+-- ( T (..)
+-- , f
+--
+-- , pattern P1
+-- , mkX
+-- , xToY
+--
+-- , module M1
+-- )
+--
+prettyExportSpecList :: ExportSpecList NodeInfo -> Printer s ()
+prettyExportSpecList (ExportSpecList _ specs) =
+  do depend (write "  ( ") $
+       inter (newline >> comma) $
+        flip map (groupParagraphs specs) $ \specGroup -> do
+          prefixedLined ", " (map prettyExportSpec specGroup)
+          newline
+     write "  ) "
+
+prettyExportSpec :: ExportSpec NodeInfo -> Printer s ()
+prettyExportSpec sp =
+  do prettyNoExt sp

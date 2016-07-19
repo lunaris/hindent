@@ -7,10 +7,10 @@ module HIndent.Styles.WillJones where
 
 import HIndent.Pretty
 import HIndent.Styles.WillJones.Modules
+import HIndent.Styles.WillJones.Operations
 import HIndent.Types
 
-import Control.Monad.State.Class
-import Data.Int
+import Control.Monad.State
 import Language.Haskell.Exts.Annotated.Syntax
 
 --------------------------------------------------------------------------------
@@ -27,6 +27,7 @@ willJones =
         ,styleInitialState = State
         ,styleExtenders =
           [Extender prettyModule
+          ,Extender prettyModuleHead
           ,Extender prettyDecl]
         ,styleDefConfig =
           defaultConfig {configMaxColumns = 80
@@ -358,53 +359,3 @@ prettyFieldDecl (FieldDecl _ names ty)
            newline
       _ ->
         fail "Record fields must be given separate types, even if they are the same"
-
---------------------------------------------------------------------------------
--- Utilities
-
-whenJust :: Applicative f => (a -> f ()) -> Maybe a -> f ()
-whenJust
-  = maybe (pure ())
-
-commaSpaceBefore :: MonadState (PrintState s) m
-                 => (a -> m ())
-                 -> a
-                 -> m ()
-commaSpaceBefore f x =
-  do write ", "
-     f x
-
-commaAfter :: MonadState (PrintState s) m
-           => (a -> m ())
-           -> a
-           -> m ()
-commaAfter f x =
-  do f x
-     comma
-
--- | Does printing the given thing overflow column limit? (e.g. 80)
-fitsOnOneLine :: MonadState (PrintState s) m => m a -> m (Bool,PrintState s)
-fitsOnOneLine p =
-  do line <- gets psLine
-     (_,st) <- sandbox p
-     columnLimit <- getColumnLimit
-     return (psLine st == line && psColumn st < columnLimit,st)
-
--- | Is the given expression "small"? I.e. does it fit under
--- 'smallColumnLimit' columns.
-isSmallFitting :: MonadState (PrintState t) m
-               => m a -> m (Bool,PrintState t)
-isSmallFitting p =
-  do (_,st) <- sandbox p
-     return (psColumn st < smallColumnLimit,st)
-
-smallColumnLimit :: Int64
-smallColumnLimit = 50
-
-mapButLast :: (a -> b) -> (a -> b) -> [a] -> [b]
-mapButLast _ g [x] =
-  [g x]
-mapButLast f g (x : xs) =
-  f x : mapButLast f g xs
-mapButLast _ _ [] =
-  []

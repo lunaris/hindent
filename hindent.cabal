@@ -45,6 +45,7 @@ library
                      HIndent.Styles.Cramer
                      HIndent.Styles.WillJones
                      HIndent.Styles.WillJones.Modules
+                     HIndent.Styles.WillJones.Operations
   build-depends:     base >= 4.7 && <5
                    , containers
                    , haskell-src-exts >= 1.17
