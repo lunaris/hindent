@@ -6,6 +6,7 @@
 module HIndent.Styles.WillJones where
 
 import HIndent.Pretty
+import HIndent.Styles.WillJones.Modules
 import HIndent.Types
 
 import Control.Monad.State.Class
@@ -25,7 +26,8 @@ willJones =
         ,styleDescription = "Will Jones' personal style."
         ,styleInitialState = State
         ,styleExtenders =
-          [Extender prettyDecl]
+          [Extender prettyModule
+          ,Extender prettyDecl]
         ,styleDefConfig =
           defaultConfig {configMaxColumns = 80
                         ,configIndentSpaces = 2
