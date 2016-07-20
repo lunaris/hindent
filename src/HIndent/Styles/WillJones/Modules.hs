@@ -1,4 +1,6 @@
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module HIndent.Styles.WillJones.Modules where
 
@@ -8,16 +10,20 @@ import HIndent.Types
 
 import Control.Monad
 import Data.List
+import Data.Monoid
+import Data.Ord
+import Data.Semigroup
 import Language.Haskell.Exts.Annotated.Syntax
 
 -- | Pretty print a module
 prettyModule :: Module NodeInfo -> Printer s ()
 prettyModule md =
   case md of
-    Module l mmdHead pragmas@(_ : _) importDecls decls ->
+    Module l mmdHead pragmas importDecls decls ->
       do prettyModulePragmas pragmas
          whenJust prettyModuleHead mmdHead
-         pretty (Module l Nothing [] importDecls decls)
+         prettyImports importDecls
+         prettyNoExt (Module l Nothing [] [] decls)
     _ ->
       prettyNoExt md
 
@@ -33,9 +39,11 @@ prettyModuleHead (ModuleHead _ name mwarning mexports) =
      whenJust (\exports -> newline >> prettyExportSpecList exports) mexports
      write "where"
      newline
+     newline
 
 -- | Pretty print a list of module pragmas
 prettyModulePragmas :: [ModulePragma NodeInfo] -> Printer s ()
+prettyModulePragmas [] = return ()
 prettyModulePragmas ps =
   do prettyLanguagePragmas [n | LanguagePragma _ ns <- langPs, n <- ns]
      case nonLangPs of
@@ -134,3 +142,70 @@ prettyExportSpec sp =
 componentNameName :: CName l -> Name l
 componentNameName (VarName _ name) = name
 componentNameName (ConName _ name) = name
+
+-- | Pretty print a list of imports like
+--
+-- import                Control.Monad.Classes         (Find, Peano)
+-- import safe qualified Control.Monad.Classes.Proxied as Prx
+-- import      qualified Data.Constraint               as Con (Constraint)
+-- import                Prelude
+--
+prettyImports :: [ImportDecl NodeInfo] -> Printer s ()
+prettyImports is
+  = withParagraphs (withFirst . sortImps) (withLater . sortImps) is
+  where
+    sortImps = sortBy (comparing importModuleName)
+    syn = foldMap importSyntax is
+    prettyImport' = prettyImport syn
+    withFirst = lined . map prettyImport'
+    withLater impGroup = do
+      newline
+      newline
+      lined (map prettyImport' impGroup)
+
+-- | Pretty print an import
+prettyImport
+  :: ImportSyntax -> ImportDecl NodeInfo -> Printer s ()
+prettyImport (Any anyImpSafe,Any anyImpQual,Max maxImpLen) decl@ImportDecl{..} =
+  do when (importSrc || importPkg /= Nothing) $
+       fail "Source and package imports are not supported"
+     write "import "
+     if importSafe
+        then write "safe "
+        else if anyImpSafe
+                then write "     "
+                else return ()
+     if importQualified
+        then write "qualified "
+        else if anyImpQual
+                then write "          "
+                else return ()
+     pretty importModule
+     let impLen = length (importModuleName decl)
+     string (replicate (maxImpLen - impLen + 1) ' ')
+     case (importAs,importSpecs) of
+       (Just asName,Just specs) ->
+         do write "as "
+            pretty asName
+            space
+            pretty specs
+       (Just asName,_) ->
+         do write "as "
+            pretty asName
+       (_,Just specs) -> do pretty specs
+       _ -> do return ()
+
+type ImportSyntax = (AnyImportedSafe,AnyImportedQualified,MaxImportLength)
+
+type AnyImportedSafe = Any
+
+type AnyImportedQualified = Any
+
+type MaxImportLength = Max Int
+
+importSyntax :: ImportDecl l -> ImportSyntax
+importSyntax ImportDecl{importQualified,importSafe,importModule = ModuleName _ name} =
+  (Any importSafe,Any importQualified,Max (length name))
+
+importModuleName :: ImportDecl l -> String
+importModuleName ImportDecl{importModule = ModuleName _ name} = name

@@ -51,6 +51,7 @@ library
                    , haskell-src-exts >= 1.17
                    , monad-loops
                    , mtl
+                   , semigroups
                    , text
                    , transformers
 
