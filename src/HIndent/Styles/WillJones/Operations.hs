@@ -34,23 +34,23 @@ commaAfter f x =
   do f x
      comma
 
-groupParagraphs
-  :: Annotated ast
-  => [ast NodeInfo] -> [[ast NodeInfo]]
-groupParagraphs [] = []
-groupParagraphs (initAst:rest) =
-  reverse $ map reverse $ go [[initAst]] initEnd rest
+withParagraphs :: (Annotated ast
+                  ,MonadState (PrintState s) m)
+               => ([ast NodeInfo] -> m ())
+               -> ([ast NodeInfo] -> m ())
+               -> [ast NodeInfo]
+               -> m ()
+withParagraphs _ _ [] = return ()
+withParagraphs withFirst withLater (initAst:rest) =
+  go (withFirst . (initAst :)) initEnd rest
   where (_,initEnd) = startEnd initAst
-        go
-          :: Annotated ast
-          => [[ast NodeInfo]] -> Int -> [ast NodeInfo] -> [[ast NodeInfo]]
-        go accs _ [] = accs
-        go (acc:accs) groupEnd (ast:asts) =
+        go f _ [] = f []
+        go f groupEnd (ast:asts) =
           let (astStart,astEnd) = startEnd ast
           in if astStart - groupEnd > 1
-                then go ([ast] : acc : accs) astEnd asts
-                else go ((ast : acc) : accs) astEnd asts
-        go _ _ _ = error "groupParagraphs/go: impossible"
+                then do f []
+                        go (withLater . (ast :)) astEnd asts
+                else do go (f . (ast :)) astEnd asts
         startEnd :: Annotated ast
                  => ast NodeInfo -> (Int,Int)
         startEnd ast =
