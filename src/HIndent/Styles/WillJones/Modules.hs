@@ -151,17 +151,20 @@ componentNameName (ConName _ name) = name
 -- import                Prelude
 --
 prettyImports :: [ImportDecl NodeInfo] -> Printer s ()
-prettyImports is
-  = withParagraphs (withFirst . sortImps) (withLater . sortImps) is
-  where
-    sortImps = sortBy (comparing importModuleName)
-    syn = foldMap importSyntax is
-    prettyImport' = prettyImport syn
-    withFirst = lined . map prettyImport'
-    withLater impGroup = do
-      newline
-      newline
-      lined (map prettyImport' impGroup)
+prettyImports is =
+  do withParagraphs (withFirst . sortImps)
+                    (withLater . sortImps)
+                    is
+     newline
+     newline
+  where sortImps = sortBy (comparing importModuleName)
+        syn = foldMap importSyntax is
+        prettyImport' = prettyImport syn
+        withFirst = lined . map prettyImport'
+        withLater impGroup =
+          do newline
+             newline
+             lined (map prettyImport' impGroup)
 
 -- | Pretty print an import
 prettyImport

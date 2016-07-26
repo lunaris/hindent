@@ -44,8 +44,10 @@ library
                      HIndent.Styles.Gibiansky
                      HIndent.Styles.Cramer
                      HIndent.Styles.WillJones
+                     HIndent.Styles.WillJones.Data
                      HIndent.Styles.WillJones.Modules
                      HIndent.Styles.WillJones.Operations
+                     HIndent.Styles.WillJones.Types
   build-depends:     base >= 4.7 && <5
                    , containers
                    , haskell-src-exts >= 1.17
