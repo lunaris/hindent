@@ -18,6 +18,30 @@ whenJust :: Applicative f => (a -> f ()) -> Maybe a -> f ()
 whenJust
   = maybe (pure ())
 
+qNameString :: QName l -> String
+qNameString (Qual _ m n) = moduleNameString m ++ "." ++ nameString n
+qNameString (UnQual _ n) = nameString n
+qNameString (Special _ s) = specialConString s
+
+specialConString :: SpecialCon l -> String
+specialConString (UnitCon _) = "()"
+specialConString (ListCon _) = "[]"
+specialConString (FunCon _) = "->"
+specialConString (TupleCon _ boxed n) =
+  case boxed of
+    Boxed -> '(' : cs ++ ")"
+    Unboxed -> '(' : '#' : cs ++ "#)"
+  where cs = replicate (n - 1) ','
+specialConString (Cons _) = ":"
+specialConString (UnboxedSingleCon _) = "(# #)"
+
+moduleNameString :: ModuleName l -> String
+moduleNameString (ModuleName _ modName) = modName
+
+nameString :: Name l -> String
+nameString (Ident _ name) = name
+nameString (Symbol _ name) = name
+
 commaSpaceBefore :: MonadState (PrintState s) m
                  => (a -> m ())
                  -> a

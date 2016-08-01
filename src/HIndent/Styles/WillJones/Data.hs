@@ -9,6 +9,8 @@ import HIndent.Styles.WillJones.Types
 import HIndent.Types
 
 import Control.Monad.State
+import Data.List
+import Data.Ord
 import Language.Haskell.Exts.Annotated.Syntax
 
 -- | Pretty prints a newtype declaration like
@@ -28,7 +30,7 @@ prettyNewtypeDecl mctx declHead con mderiv =
      newline
      write "  = "
      prettyQualConDecl con
-     whenJust pretty mderiv
+     whenJust prettyDeriving mderiv
 
 -- | Pretty prints a data declaration like
 --
@@ -48,7 +50,7 @@ prettyDataDecl mctx declHead cons mderiv =
      write "  = "
      prefixedLined "  | "
                    (map prettyQualConDecl cons)
-     whenJust pretty mderiv
+     whenJust prettyDeriving mderiv
 
 prettyQualConDecl :: MonadState (PrintState s) m
                   => QualConDecl NodeInfo
@@ -114,3 +116,26 @@ prettyFieldDecl (FieldDecl _ names ty)
            newline
       _ ->
         fail "Record fields must be given separate types, even if they are the same"
+
+-- | Pretty prints a deriving clause like
+--
+-- deriving (Eq, JSON.FromJSON, Ord, PG.FromRow, Show,
+--           Typeable)
+--
+prettyDeriving :: MonadState (PrintState s) m
+               => Deriving NodeInfo -> m ()
+prettyDeriving (Deriving _ rules) =
+  do write "deriving ("
+     inter (write ", ")
+           (map pretty (sortBy (comparing instRuleNameString) rules))
+     write ")"
+
+instRuleNameString :: InstRule l -> String
+instRuleNameString (IRule _ _ _ ih) = instHeadNameString ih
+instRuleNameString (IParen _ rule) = instRuleNameString rule
+
+instHeadNameString :: InstHead l -> String
+instHeadNameString (IHCon _ qn) = qNameString qn
+instHeadNameString (IHInfix _ _ qn) = qNameString qn
+instHeadNameString (IHParen _ ih) = instHeadNameString ih
+instHeadNameString (IHApp _ ih _) = instHeadNameString ih

@@ -88,10 +88,6 @@ isLanguagePragma :: ModulePragma a -> Bool
 isLanguagePragma (LanguagePragma _ _) = True
 isLanguagePragma _ = False
 
-nameString :: Name NodeInfo -> String
-nameString (Ident _ name) = name
-nameString (Symbol _ name) = name
-
 -- | Pretty print an export list like
 --
 -- ( T (..)
